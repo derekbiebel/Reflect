@@ -1,0 +1,16 @@
+{
+  "name": "Reflect",
+  "short_name": "Reflect",
+  "description": "A journal that learns you.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfcfd",
+  "theme_color": "#c69775",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
