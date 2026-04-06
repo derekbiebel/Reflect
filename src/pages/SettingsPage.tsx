@@ -236,6 +236,29 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* Update */}
+      <section className="mb-8">
+        <h2 className="text-sm font-medium text-[var(--color-text-muted)] mb-3 uppercase tracking-wider">App</h2>
+        <button
+          onClick={async () => {
+            // Unregister service workers and clear caches
+            if ('serviceWorker' in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              for (const reg of registrations) await reg.unregister();
+            }
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              for (const key of keys) await caches.delete(key);
+            }
+            window.location.reload();
+          }}
+          className="w-full text-left px-4 py-3 rounded-xl bg-[var(--color-bg-card)] hover:bg-[var(--color-bg-hover)] transition-colors"
+        >
+          <span className="text-sm">Check for Updates</span>
+          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Clears cache and reloads with the latest version</p>
+        </button>
+      </section>
+
       {/* About */}
       <section>
         <p className="text-xs text-[var(--color-text-muted)] text-center">
