@@ -287,6 +287,12 @@ export async function toggleHabitLog(habitId: string, date: string): Promise<boo
   return newCompleted;
 }
 
+export async function getAllHabitLogs(): Promise<HabitLog[]> {
+  const db = await openDB();
+  const tx = db.transaction('habitLogs', 'readonly');
+  return txPromise(tx.objectStore('habitLogs').getAll());
+}
+
 export async function clearAllData(): Promise<void> {
   const db = await openDB();
   const tx = db.transaction(['entries', 'context', 'insights', 'deepInsights', 'nudges', 'habits', 'habitLogs'], 'readwrite');

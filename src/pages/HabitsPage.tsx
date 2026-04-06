@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Habit, HabitLog } from '../lib/types';
+import type { Habit, HabitLog, JournalEntry } from '../lib/types';
 import {
   getAllHabits,
   saveHabit,
@@ -7,7 +7,10 @@ import {
   toggleHabitLog,
   getHabitLogsForDate,
   getHabitLogsForRange,
+  getAllHabitLogs,
+  getAllEntries,
 } from '../lib/db';
+import HabitInsights from '../components/HabitInsights';
 
 const EMOJI_OPTIONS = [
   '✅', '📖', '🏃', '💧', '😴', '🧘', '💪', '🎯',
@@ -55,6 +58,9 @@ export default function HabitsPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [allDone, setAllDone] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'today' | 'insights'>('today');
+  const [allLogs, setAllLogs] = useState<HabitLog[]>([]);
+  const [allEntries, setAllEntries] = useState<JournalEntry[]>([]);
 
   const today = getToday();
   const todayDisplay = new Date().toLocaleDateString('en-US', {
@@ -120,6 +126,15 @@ export default function HabitsPage() {
 
     setWeekLogs(newWeekLogs);
     setStreaks(newStreaks);
+
+    // Load all logs + entries for insights tab
+    const [fetchedLogs, fetchedEntries] = await Promise.all([
+      getAllHabitLogs(),
+      getAllEntries(),
+    ]);
+    setAllLogs(fetchedLogs);
+    setAllEntries(fetchedEntries);
+
     setLoading(false);
   }, [today]);
 
@@ -205,8 +220,37 @@ export default function HabitsPage() {
           +
         </button>
       </div>
-      <p className="text-sm text-[var(--color-text-muted)] mb-6">{todayDisplay}</p>
+      <p className="text-sm text-[var(--color-text-muted)] mb-4">{todayDisplay}</p>
 
+      {/* Tab Toggle */}
+      {habits.length > 0 && (
+        <div
+          className="flex mb-5 p-1 rounded-xl"
+          style={{ backgroundColor: 'var(--color-bg-hover)' }}
+        >
+          {(['today', 'insights'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="flex-1 py-1.5 rounded-lg text-sm font-sans capitalize transition-all duration-200"
+              style={{
+                backgroundColor: activeTab === tab ? 'var(--color-bg)' : 'transparent',
+                color: activeTab === tab ? 'var(--color-text)' : 'var(--color-text-muted)',
+                fontWeight: activeTab === tab ? 500 : 400,
+                boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              {tab === 'today' ? 'Today' : 'Insights'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Insights Tab */}
+      {activeTab === 'insights' && habits.length > 0 ? (
+        <HabitInsights habits={habits} logs={allLogs} entries={allEntries} />
+      ) : (
+      <>
       {/* All done celebration */}
       {allDone && (
         <div className="mb-4 py-3 px-4 rounded-xl bg-[var(--color-secondary)] text-[var(--color-text)] text-center text-sm font-sans transition-all duration-500">
@@ -357,6 +401,8 @@ export default function HabitsPage() {
             {weeklyStats.completed}/{weeklyStats.scheduled} completed
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* Add Habit Modal */}
