@@ -6,6 +6,7 @@ import BottomNav from './components/BottomNav';
 import JournalPage from './pages/JournalPage';
 import InsightsPage from './pages/InsightsPage';
 import SettingsPage from './pages/SettingsPage';
+import HabitsPage from './pages/HabitsPage';
 
 export default function App() {
   const { onboardingComplete, currentPage, activeSession, setEntries } = useAppStore();
@@ -21,6 +22,7 @@ export default function App() {
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
       {currentPage === 'journal' && <JournalPage />}
+      {currentPage === 'habits' && <HabitsPage />}
       {currentPage === 'insights' && <InsightsPage />}
       {currentPage === 'settings' && <SettingsPage />}
       {!activeSession && <BottomNav />}

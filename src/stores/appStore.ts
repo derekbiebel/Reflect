@@ -10,8 +10,8 @@ interface AppState {
   completeOnboarding: () => void;
 
   // Navigation
-  currentPage: 'journal' | 'insights' | 'settings';
-  setCurrentPage: (page: 'journal' | 'insights' | 'settings') => void;
+  currentPage: 'journal' | 'habits' | 'insights' | 'settings';
+  setCurrentPage: (page: 'journal' | 'habits' | 'insights' | 'settings') => void;
 
   // Active session
   activeSession: boolean;

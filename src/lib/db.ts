@@ -1,7 +1,7 @@
-import type { JournalEntry, UserContext, WeeklyInsight, DeepInsight, PatternNudge } from './types';
+import type { JournalEntry, UserContext, WeeklyInsight, DeepInsight, PatternNudge, Habit, HabitLog } from './types';
 
 const DB_NAME = 'reflect-journal';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -26,6 +26,14 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('nudges')) {
         db.createObjectStore('nudges', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('habits')) {
+        db.createObjectStore('habits', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('habitLogs')) {
+        const logStore = db.createObjectStore('habitLogs', { keyPath: 'id' });
+        logStore.createIndex('habitId', 'habitId', { unique: false });
+        logStore.createIndex('date', 'date', { unique: false });
       }
     };
   });
@@ -180,14 +188,115 @@ export async function dismissNudge(id: string): Promise<void> {
   });
 }
 
+// ── Habits ──────────────────────────────────────────────
+
+export async function saveHabit(habit: Habit): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('habits', 'readwrite');
+  tx.objectStore('habits').put(habit);
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getAllHabits(): Promise<Habit[]> {
+  const db = await openDB();
+  const tx = db.transaction('habits', 'readonly');
+  const habits = await txPromise(tx.objectStore('habits').getAll());
+  return habits
+    .filter((h: Habit) => !h.archived)
+    .sort((a: Habit, b: Habit) => a.createdAt - b.createdAt);
+}
+
+export async function deleteHabit(id: string): Promise<void> {
+  const db = await openDB();
+  // Delete habit and all its logs
+  const tx = db.transaction(['habits', 'habitLogs'], 'readwrite');
+  tx.objectStore('habits').delete(id);
+  const logStore = tx.objectStore('habitLogs');
+  const index = logStore.index('habitId');
+  const logs = await txPromise(index.getAll(id));
+  for (const log of logs) {
+    logStore.delete(log.id);
+  }
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function archiveHabit(id: string): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('habits', 'readwrite');
+  const store = tx.objectStore('habits');
+  const habit = await txPromise(store.get(id));
+  if (habit) {
+    habit.archived = true;
+    store.put(habit);
+  }
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function saveHabitLog(log: HabitLog): Promise<void> {
+  const db = await openDB();
+  const tx = db.transaction('habitLogs', 'readwrite');
+  tx.objectStore('habitLogs').put(log);
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getHabitLogsForDate(date: string): Promise<HabitLog[]> {
+  const db = await openDB();
+  const tx = db.transaction('habitLogs', 'readonly');
+  const index = tx.objectStore('habitLogs').index('date');
+  return txPromise(index.getAll(date));
+}
+
+export async function getHabitLogsForRange(habitId: string, startDate: string, endDate: string): Promise<HabitLog[]> {
+  const db = await openDB();
+  const tx = db.transaction('habitLogs', 'readonly');
+  const index = tx.objectStore('habitLogs').index('habitId');
+  const allLogs = await txPromise(index.getAll(habitId));
+  return allLogs.filter((l: HabitLog) => l.date >= startDate && l.date <= endDate);
+}
+
+export async function toggleHabitLog(habitId: string, date: string): Promise<boolean> {
+  const db = await openDB();
+  const id = `${habitId}_${date}`;
+  const tx = db.transaction('habitLogs', 'readwrite');
+  const store = tx.objectStore('habitLogs');
+  const existing = await txPromise(store.get(id));
+  const newCompleted = existing ? !existing.completed : true;
+  store.put({
+    id,
+    habitId,
+    date,
+    completed: newCompleted,
+    timestamp: Date.now(),
+  } as HabitLog);
+  await new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  return newCompleted;
+}
+
 export async function clearAllData(): Promise<void> {
   const db = await openDB();
-  const tx = db.transaction(['entries', 'context', 'insights', 'deepInsights', 'nudges'], 'readwrite');
+  const tx = db.transaction(['entries', 'context', 'insights', 'deepInsights', 'nudges', 'habits', 'habitLogs'], 'readwrite');
   tx.objectStore('entries').clear();
   tx.objectStore('context').clear();
   tx.objectStore('insights').clear();
   tx.objectStore('deepInsights').clear();
   tx.objectStore('nudges').clear();
+  tx.objectStore('habits').clear();
+  tx.objectStore('habitLogs').clear();
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);

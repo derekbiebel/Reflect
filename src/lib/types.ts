@@ -77,3 +77,22 @@ export interface PatternNudge {
   generatedAt: number;
   dismissed?: boolean;
 }
+
+export interface Habit {
+  id: string;
+  name: string;
+  icon: string;        // emoji
+  color: string;       // tailwind-like color name or hex
+  frequency: 'daily' | 'weekdays' | 'custom';
+  customDays?: number[]; // 0=Sun, 1=Mon, etc. Only for 'custom' frequency
+  createdAt: number;
+  archived?: boolean;
+}
+
+export interface HabitLog {
+  id: string;          // `${habitId}_${date}`
+  habitId: string;
+  date: string;        // YYYY-MM-DD
+  completed: boolean;
+  timestamp: number;
+}
